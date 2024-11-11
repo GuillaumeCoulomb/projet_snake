@@ -12,6 +12,7 @@ def ask_dimensions():
     
     return(args.W,args.L) #retourne un tuple
 
+#liste position du serpent :
 
 sp=[[10,5],[10,6],[10,7]]
 
