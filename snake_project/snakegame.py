@@ -1,187 +1,155 @@
 import pygame
 import argparse
 import random
-#fonction pour demander dimensions
+import abc
 
+def windowsize(): #ask the size of the checkerboard
+    parser = argparse.ArgumentParser(description='Window size with numbers of tiles.')
+    parser.add_argument('-L', help="largeur", type=int, default=400)
+    parser.add_argument('-W', help="longueur", type=int, default=400)
+    args = parser.parse_args()
+    return (args.W, args.L)
 
+class Tile: #manage the tile drawing
+    def __init__(self, row, column, color, size):
+        self.row = row
+        self.column = column
+        self.color = color
+        self.size = size
 
-#liste position du serpent :
-
-
-
-#fonction pour lancer snake
-
-
-
-class Checkerboard:
-
-    def __init__(self):
-        parser = argparse.ArgumentParser(description='demander dimensions')
-        # parser.add_argument('-D', type=tuple, help="tuple dimensions")
-        parser.add_argument('-W', help="largeur", type=int)
-        parser.add_argument('-L', help="longueur", type=int)
-        args=parser.parse_args()
-        
-        self.width=args.W
-        self.length=args.L
-
-        
-    
     def draw(self, screen):
-        dimensions=[self.width,self.length]
-        color = [(0,0,0),(255, 255, 255)] # blue
-        
-        
-        for i in range(dimensions[0]//20):
-            for j in range(dimensions[1]//20):
+        rect = pygame.Rect(self.column * self.size, self.row * self.size, self.size, self.size)
+        pygame.draw.rect(screen, self.color, rect)
 
-                left=i*20
-                top=j*20
-                width=20
-                height=20
-                ind=(1+(-1)**(i+j))//2 #alternance noir blanc
+class GameObject(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def tiles(self):
+        pass
 
-                rect = pygame.Rect(left, top, width, height)
-                pygame.draw.rect(screen, color[ind], rect)
+class Checkerboard(GameObject): #manage the checkerboard
+    def __init__(self, size):
+        self.width = size[0]
+        self.length = size[1]
+        self.tile_size = 20
+        self.colors = [(0, 0, 0), (255, 255, 255)] 
 
-class Snake:
+    @property
+    def tiles(self):
+        for row in range(self.length // self.tile_size):
+            for column in range(self.width // self.tile_size):
+                color = self.colors[(1 + (-1) ** (row + column)) // 2]
+                yield Tile(row, column, color, self.tile_size) #generate the tiles of the checkerboard
+
+class Snake(GameObject):
     def __init__(self):
-        self.name="serpent"
-        self.position=[[10,5],[10,6],[10,7]]
-        self.tete=[10,7]
-        self.vitesse=2
-        
+        self.position = [[10, 5], [10, 6], [10, 7]] #initial position of the checkerboard
+        self.tete = [10, 7]
+        self.vitesse = 2
+        self.color = (0, 255, 0)
+        self.tile_size = 20
 
-    def deplacement(self,command,fruit):
-        if fruit.mange !=1 :
-           self.position.pop(0)
-
-
-        self.tete=[self.tete[0]+command.direction[0],self.tete[1]+command.direction[1]]
+    def deplacement(self, command, fruit): #manage the deplacement of one tile of the snake
+        if not fruit.mange: #if fruit.mange, the snake gets one more tile
+            self.position.pop(0)
+        self.tete = [self.tete[0] + command.direction[0], self.tete[1] + command.direction[1]]
         self.position.append(self.tete)
-        
+
     def collision(self):
-        if self.tete in self.position[0:-1:1]:
-            pygame.quit()    
-            
-            
+        if self.tete in self.position[:-1]:
+            pygame.quit() #ends the game if the player loses
+            quit()
 
-    def draw(self,screen):
-        for elt in self.position:
-            left=elt[1]*20
-            top=elt[0]*20
-            width=20
-            height=20
+    @property
+    def tiles(self):
+        for pos in self.position:
+            yield Tile(pos[0], pos[1], self.color, self.tile_size)
 
-            rect = pygame.Rect(left, top, width, height)
-            pygame.draw.rect(screen, (0,255,0), rect)
+class Fruit(GameObject):
+    def __init__(self):
+        self.position = [5, 5]
+        self.mange = 0
+        self.score = 0
+        self.color = (255, 0, 0)
+        self.tile_size = 20
+
+    def grandit(self, snake, checkerboard):
+        if self.position == snake.tete:
+            self.mange = 1
+            snake.vitesse += 1
+            self.position = [random.randint(0,checkerboard.length// self.tile_size - 1), #generates a new position of the fruit
+                             random.randint(0,checkerboard.width// self.tile_size - 1)]
+            self.score += 1
+        else:
+            self.mange = 0
+
+    @property
+    def tiles(self):
+        return [Tile(self.position[0], self.position[1], self.color, self.tile_size)]
+
+class Board:
+    def __init__(self, size):
+        self.objects = []
+        self.width=size[0]
+        self.length=size[1]
+
+    def add_object(self, game_object):
+        self.objects.append(game_object)
+
+    def draw(self, screen):
+        screen.fill((0, 0, 0))
+        for obj in self.objects:
+            for tile in obj.tiles:
+                tile.draw(screen)
+
+    def interactions(self):
+        snake = next(obj for obj in self.objects if isinstance(obj, Snake))
+        fruit = next(obj for obj in self.objects if isinstance(obj, Fruit))
+        checkerboard= next(obj for obj in self.objects if isinstance(obj, Checkerboard))
+        fruit.grandit(snake=snake,checkerboard=checkerboard)
+        snake.collision()
 
 class Command:
     def __init__(self):
-        self.name="commande"
-        self.direction=[0,1]
+        self.direction = [0, 1]
 
-
-    def controle(self):
-        
+    def controle(self): #gets information from the keys of the computer
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
-                
-                if event.key == pygame.K_UP and self.direction !=[1,0]:
-                    self.direction=[-1,0]   
-                if event.key == pygame.K_DOWN and self.direction != [-1,0]:
-                    self.direction=[1,0]
-                
-                if event.key == pygame.K_RIGHT and self.direction != [0,-1]:
-                    self.direction=[0,1]
-                if event.key == pygame.K_LEFT and self.direction !=[0,1]:
-                    self.direction=[0,-1]
-                if event.key == pygame.K_f:
+                if event.key == pygame.K_UP and self.direction != [1, 0]:
+                    self.direction = [-1, 0]
+                elif event.key == pygame.K_DOWN and self.direction != [-1, 0]:
+                    self.direction = [1, 0]
+                elif event.key == pygame.K_RIGHT and self.direction != [0, -1]:
+                    self.direction = [0, 1]
+                elif event.key == pygame.K_LEFT and self.direction != [0, 1]:
+                    self.direction = [0, -1]
+                elif event.key == pygame.K_f:
                     pygame.quit()
-
-
-
-class Fruit:
-    def __init__(self):
-        self.position=[5,5]
-        self.mange=0
-        self.k=0
-        self.score=0
- 
-    def grandit(self,snake,checkerboard):
-        if self.position==snake.tete:
-            self.mange=1
-            snake.vitesse=snake.vitesse+1
-            self.position=[random.randint(0,checkerboard.width//20),random.randint(0,checkerboard.length//20)]
-            self.score=self.score+1
-            
-        else :
-            self.mange=0
-
-    def nouveau(self,checkerboard,R):
-        if self.mange==1:
-            
-            #self.position=[self.position[0]+1,self.position[1]+1]
-            random.seed()
-            #self.position=[random.randint(0,10),random.randint(0,10)]
-
-        
-            self.mange=0
-        
-
-    def draw(self,screen):
-        width=20
-        height=20
-
-        rect = pygame.Rect( 20*self.position[1],20*self.position[0], width, height)
-        pygame.draw.rect(screen, (255,0,0), rect)
-
+                    quit()
 
 def launch_snake():
-
     pygame.init()
-
-    checkerboard=Checkerboard()   
-    snake=Snake()
-    command=Command()
-    fruit=Fruit()
-
+    size = windowsize()
+    screen = pygame.display.set_mode(size)
+    board = Board(size)
+    snake = Snake()
+    fruit = Fruit()
+    checkerboard = Checkerboard(size)
+    command = Command()
     clock = pygame.time.Clock()
 
-    screen=pygame.display.set_mode( (checkerboard.width,checkerboard.length) )
+    board.add_object(checkerboard)
+    board.add_object(snake)
+    board.add_object(fruit)
 
-    print("partie lancée")
+    print("Partie lancée")
 
-    vitesse=0
-   
-    
     while True:
-
         clock.tick(snake.vitesse)
-
-        
-
-        # for event in pygame.event.get():
-        #     if event.type == pygame.KEYDOWN:
-        #         if event.key == pygame.K_f:
-        #             pygame.quit()
-        
         command.controle()
-        
-        
-        snake.deplacement(command,fruit)
-        fruit.grandit(snake,checkerboard)
-        #fruit.nouveau(checkerboard,R)
-        snake.collision()
-        
-
-        checkerboard.draw(screen)
-        fruit.draw(screen)
-        snake.draw(screen)
-        pygame.display.set_caption("score : "+str(fruit.score) +"fruit"+str(fruit.position)+"tete"+str(snake.tete))
+        snake.deplacement(command, fruit)
+        board.interactions()
+        board.draw(screen)
+        pygame.display.set_caption(f"Score : {fruit.score}")
         pygame.display.update()
-             
-        
-
-        
-        

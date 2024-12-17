@@ -12,6 +12,9 @@ pygame = "^2.6.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
+mypy = "^1.13.0"
+ruff = "^0.8.2"
+coverage = "^7.6.9"
 
 [build-system]
 requires = ["poetry-core"]
@@ -20,3 +23,11 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 hello = "snake_project.hello:hello"
 launch_snake="snake_project.snakegame:launch_snake"
+
+[tool.mypy]
+files = "."
+strict = true
+pretty = true
+show_error_code_links = true
+show_error_context = true
+show_column_numbers = true
