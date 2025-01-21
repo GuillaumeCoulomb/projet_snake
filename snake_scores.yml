@@ -1,0 +1,10 @@
+- name: Joe
+  score: 10
+- name: Jack
+  score: 8
+- name: Averell
+  score: 0
+- name: William
+  score: 6
+- name: nouveau_joueur
+  score: 15
