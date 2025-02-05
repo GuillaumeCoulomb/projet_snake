@@ -1,13 +1,14 @@
 # ruff: noqa: D100,S311
 
-# Standard
+
 import random
 import typing
+import logger
 
-# Third party
+
 import pygame
 
-# First party
+
 from .game_object import GameObject
 from .tile import Tile
 
@@ -31,11 +32,12 @@ class Fruit(GameObject):
         """
         return iter(self._tiles)
 
-    # Create a Fruit at random position on the board
+    # create a Fruit at random position on the board
     @classmethod
     def create_random(cls, nb_lines: int, nb_cols: int) -> typing.Self:
         """Create a random fruit."""
         random.seed()
         x = random.randint(0, nb_cols - 1)
         y = random.randint(0, nb_lines - 1)
+
         return cls(Tile(x, y, cls.color))
